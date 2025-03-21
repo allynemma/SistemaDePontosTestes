@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "AeSNY54Jb1A=",
+  "dgSpecHash": "pjvbovLXGAM=",
   "success": true,
   "projectFilePath": "C:\\Users\\Allyne\\source\\repos\\SistemaDePontosTestes\\SistemaDePontosTestes.csproj",
   "expectedPackageFiles": [
@@ -8,6 +8,7 @@
     "C:\\Users\\Allyne\\.nuget\\packages\\azure.identity\\1.11.4\\azure.identity.1.11.4.nupkg.sha512",
     "C:\\Users\\Allyne\\.nuget\\packages\\castle.core\\5.1.1\\castle.core.5.1.1.nupkg.sha512",
     "C:\\Users\\Allyne\\.nuget\\packages\\coverlet.collector\\6.0.0\\coverlet.collector.6.0.0.nupkg.sha512",
+    "C:\\Users\\Allyne\\.nuget\\packages\\csvhelper\\27.2.1\\csvhelper.27.2.1.nupkg.sha512",
     "C:\\Users\\Allyne\\.nuget\\packages\\microsoft.aspnetcore.authentication.jwtbearer\\9.0.3\\microsoft.aspnetcore.authentication.jwtbearer.9.0.3.nupkg.sha512",
     "C:\\Users\\Allyne\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\1.1.1\\microsoft.bcl.asyncinterfaces.1.1.1.nupkg.sha512",
     "C:\\Users\\Allyne\\.nuget\\packages\\microsoft.codecoverage\\17.8.0\\microsoft.codecoverage.17.8.0.nupkg.sha512",

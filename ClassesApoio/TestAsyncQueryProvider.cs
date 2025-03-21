@@ -1,10 +1,5 @@
 using Microsoft.EntityFrameworkCore.Query;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Threading;
-using System.Threading.Tasks;
 
 public class TestAsyncQueryProvider<TEntity> : IAsyncQueryProvider
 {
@@ -12,7 +7,7 @@ public class TestAsyncQueryProvider<TEntity> : IAsyncQueryProvider
 
     public TestAsyncQueryProvider(IQueryProvider inner)
     {
-        _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+        _inner = inner;
     }
 
     public IQueryable CreateQuery(Expression expression)
@@ -35,36 +30,18 @@ public class TestAsyncQueryProvider<TEntity> : IAsyncQueryProvider
         return _inner.Execute<TResult>(expression);
     }
 
-    public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken = default)
-    {
-        // Verifica se a operação foi cancelada
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // Executa a operação assíncrona
-        var resultType = typeof(TResult).GetGenericArguments()[0];
-        var executionResult = _inner.GetType()
-            .GetMethod(nameof(IQueryProvider.Execute), new[] { typeof(Expression) })
-            .MakeGenericMethod(resultType)
-            .Invoke(_inner, new[] { expression });
-
-        return (TResult)typeof(Task).GetMethod(nameof(Task.FromResult))
-            .MakeGenericMethod(resultType)
-            .Invoke(null, new[] { executionResult });
-    }
-
     public IAsyncEnumerable<TResult> ExecuteAsync<TResult>(Expression expression)
     {
-        // Verifica se a expressão é válida
-        if (expression == null)
-        {
-            throw new ArgumentNullException(nameof(expression));
-        }
+        return new TestAsyncEnumerable<TResult>(expression);
+    }
 
-        // Converte a expressão para um IQueryable<TResult>
-        var queryable = _inner.CreateQuery<TResult>(expression);
+    public Task<TResult> ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(_inner.Execute<TResult>(expression));
+    }
 
-        // Retorna um IAsyncEnumerable<TResult>
-        return new TestAsyncEnumerable<TResult>(queryable);
+    TResult IAsyncQueryProvider.ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
     }
 }
-

@@ -45,6 +45,7 @@ public class UsersControllerTests
         var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result);
         Assert.Equal("Get", createdAtActionResult.ActionName);
     }
+    [Fact]
     public void Login_ShouldReturnOk_WhenCredentialsAreValid()
     {
         // Arrange

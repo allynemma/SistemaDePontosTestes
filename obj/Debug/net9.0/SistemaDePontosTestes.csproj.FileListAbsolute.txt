@@ -161,3 +161,4 @@ C:\Users\Allyne\source\repos\SistemaDePontosTestes\obj\Debug\net9.0\refint\Siste
 C:\Users\Allyne\source\repos\SistemaDePontosTestes\obj\Debug\net9.0\SistemaDePontosTestes.pdb
 C:\Users\Allyne\source\repos\SistemaDePontosTestes\obj\Debug\net9.0\SistemaDePontosTestes.genruntimeconfig.cache
 C:\Users\Allyne\source\repos\SistemaDePontosTestes\obj\Debug\net9.0\ref\SistemaDePontosTestes.dll
+C:\Users\Allyne\source\repos\SistemaDePontosTestes\obj\Debug\net9.0\SistemaDePontosTestes.sourcelink.json
