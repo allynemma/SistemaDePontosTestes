@@ -8,6 +8,7 @@
     ".NETCoreApp,Version=v9.0": {
       "SistemaDePontosAPI/1.0.0": {
         "dependencies": {
+          "CsvHelper": "27.2.1",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "9.0.3",
           "Microsoft.EntityFrameworkCore": "9.0.3",
           "Microsoft.EntityFrameworkCore.Design": "9.0.3",
@@ -50,6 +51,14 @@
           "lib/netstandard2.0/Azure.Identity.dll": {
             "assemblyVersion": "1.11.4.0",
             "fileVersion": "1.1100.424.31005"
+          }
+        }
+      },
+      "CsvHelper/27.2.1": {
+        "runtime": {
+          "lib/net6.0/CsvHelper.dll": {
+            "assemblyVersion": "27.0.0.0",
+            "fileVersion": "27.2.1.0"
           }
         }
       },
@@ -1048,6 +1057,13 @@
       "sha512": "sha512-Sf4BoE6Q3jTgFkgBkx7qztYOFELBCo+wQgpYDwal/qJ1unBH73ywPztIJKXBXORRzAeNijsuxhk94h0TIMvfYg==",
       "path": "azure.identity/1.11.4",
       "hashPath": "azure.identity.1.11.4.nupkg.sha512"
+    },
+    "CsvHelper/27.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-uS5ix5hL9gL5taiAG//CScyJa8Fn1ZOh3FDhDvf4laboESFs84mCNropfp7PIt8xCkyQofljFpqu1B5UnSXjyA==",
+      "path": "csvhelper/27.2.1",
+      "hashPath": "csvhelper.27.2.1.nupkg.sha512"
     },
     "Humanizer.Core/2.14.1": {
       "type": "package",

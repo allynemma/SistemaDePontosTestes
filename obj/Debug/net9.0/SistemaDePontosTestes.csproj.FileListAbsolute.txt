@@ -162,3 +162,4 @@ C:\Users\Allyne\source\repos\SistemaDePontosTestes\obj\Debug\net9.0\SistemaDePon
 C:\Users\Allyne\source\repos\SistemaDePontosTestes\obj\Debug\net9.0\SistemaDePontosTestes.genruntimeconfig.cache
 C:\Users\Allyne\source\repos\SistemaDePontosTestes\obj\Debug\net9.0\ref\SistemaDePontosTestes.dll
 C:\Users\Allyne\source\repos\SistemaDePontosTestes\obj\Debug\net9.0\SistemaDePontosTestes.sourcelink.json
+C:\Users\Allyne\source\repos\SistemaDePontosTestes\bin\Debug\net9.0\CsvHelper.dll

@@ -296,6 +296,48 @@ public class PunchClockControllerTests
         Assert.NotNull(response);
     }
 
+    [Fact]
+    public void GerarRelatorio_ShouldReturnBadRequest_WhenDataInicioIsGreaterThanDataFim()
+    {
+        // Arrange
+        var dataInicio = DateTime.Now;
+        var dataFim = DateTime.Now.AddDays(-1);
 
+        // Act
+        var result = _controller.GerarRelatorio(dataInicio, dataFim);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal("Data de início não pode ser maior que a data final", badRequestResult.Value);
+    }
+
+    [Fact]
+    public void GerarRelatorio_ShouldReturnCsvFile_WhenDataIsValid()
+    {
+        // Arrange
+        var dataInicio = DateTime.Now.AddDays(-10);
+        var dataFim = DateTime.Now;
+        var punchClocks = new List<PunchClock>
+            {
+                new PunchClock { Id = 1, UserId = 1, Timestamp = DateTime.Now.AddDays(-5), PunchClockType = PunchClockType.CheckIn },
+                new PunchClock { Id = 2, UserId = 1, Timestamp = DateTime.Now.AddDays(-5).AddHours(8), PunchClockType = PunchClockType.CheckOut }
+            }.AsQueryable();
+
+        var dbSetMock = new Mock<DbSet<PunchClock>>();
+        dbSetMock.As<IQueryable<PunchClock>>().Setup(m => m.Provider).Returns(punchClocks.Provider);
+        dbSetMock.As<IQueryable<PunchClock>>().Setup(m => m.Expression).Returns(punchClocks.Expression);
+        dbSetMock.As<IQueryable<PunchClock>>().Setup(m => m.ElementType).Returns(punchClocks.ElementType);
+        dbSetMock.As<IQueryable<PunchClock>>().Setup(m => m.GetEnumerator()).Returns(punchClocks.GetEnumerator());
+
+        _contextMock.Setup(c => c.PunchClocks).Returns(dbSetMock.Object);
+
+        // Act
+        var result = _controller.GerarRelatorio(dataInicio, dataFim);
+
+        // Assert
+        var fileResult = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("text/csv", fileResult.ContentType);
+        Assert.Equal("relatorio_pontos.csv", fileResult.FileDownloadName);
+    }
 }
 
