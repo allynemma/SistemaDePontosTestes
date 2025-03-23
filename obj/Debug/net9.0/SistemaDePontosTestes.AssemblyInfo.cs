@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SistemaDePontosTestes")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bcd928c1d3006fec13df967d70e25e434ffa0d4f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b8c3098ff9b10ef412bf1db6f54091124ba6cb4f")]
 [assembly: System.Reflection.AssemblyProductAttribute("SistemaDePontosTestes")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SistemaDePontosTestes")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -339,5 +339,103 @@ public class PunchClockControllerTests
         Assert.Equal("text/csv", fileResult.ContentType);
         Assert.Equal("relatorio_pontos.csv", fileResult.FileDownloadName);
     }
+
+    [Fact]
+    public void ListarPontos_ShouldReturnBadRequest_WhenDataInicioIsGreaterThanDataFim()
+    {
+        // Arrange
+        var dataInicio = DateTime.Now;
+        var dataFim = DateTime.Now.AddDays(-1);
+
+        // Act
+        var result = _controller.ListarPontos(null, dataInicio, dataFim);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal("Data de início não pode ser maior que a data final", badRequestResult.Value);
+    }
+
+    [Fact]
+    public void ListarPontos_ShouldReturnOk_WhenNoDatesAreProvided()
+    {
+        // Arrange
+        var punchClocks = new List<PunchClock>
+        {
+            new PunchClock { Id = 1, UserId = 1, Timestamp = DateTime.Now, PunchClockType = PunchClockType.CheckIn },
+            new PunchClock { Id = 2, UserId = 1, Timestamp = DateTime.Now.AddHours(8), PunchClockType = PunchClockType.CheckOut }
+        }.AsQueryable();
+
+        var users = new List<Users>
+        {
+            new Users { Id = 1, Name = "John Doe", Email = "john@example.com", Password = "password", Role = "user" }
+        }.AsQueryable();
+
+        var punchClockSetMock = new Mock<DbSet<PunchClock>>();
+        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.Provider).Returns(punchClocks.Provider);
+        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.Expression).Returns(punchClocks.Expression);
+        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.ElementType).Returns(punchClocks.ElementType);
+        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.GetEnumerator()).Returns(punchClocks.GetEnumerator());
+
+        var userSetMock = new Mock<DbSet<Users>>();
+        userSetMock.As<IQueryable<Users>>().Setup(m => m.Provider).Returns(users.Provider);
+        userSetMock.As<IQueryable<Users>>().Setup(m => m.Expression).Returns(users.Expression);
+        userSetMock.As<IQueryable<Users>>().Setup(m => m.ElementType).Returns(users.ElementType);
+        userSetMock.As<IQueryable<Users>>().Setup(m => m.GetEnumerator()).Returns(users.GetEnumerator());
+
+        _contextMock.Setup(c => c.PunchClocks).Returns(punchClockSetMock.Object);
+        _contextMock.Setup(c => c.Users).Returns(userSetMock.Object);
+
+        // Act
+        var result = _controller.ListarPontos(null, null, null);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = okResult.Value;
+        Assert.NotNull(response);
+    }
+
+        [Fact]
+    public void ListarPontos_ShouldReturnOk_WhenDatesAreProvided()
+    {
+        // Arrange
+        var dataInicio = DateTime.Now.AddDays(-10);
+        var dataFim = DateTime.Now;
+
+        var punchClocks = new List<PunchClock>
+        {
+            new PunchClock { Id = 1, UserId = 1, Timestamp = DateTime.Now.AddDays(-5), PunchClockType = PunchClockType.CheckIn },
+            new PunchClock { Id = 2, UserId = 1, Timestamp = DateTime.Now.AddDays(-5).AddHours(8), PunchClockType = PunchClockType.CheckOut }
+        }.AsQueryable();
+
+        var users = new List<Users>
+        {
+            new Users { Id = 1, Name = "John Doe", Email = "john@example.com", Password = "password", Role = "user" }
+        }.AsQueryable();
+
+        var punchClockSetMock = new Mock<DbSet<PunchClock>>();
+        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.Provider).Returns(punchClocks.Provider);
+        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.Expression).Returns(punchClocks.Expression);
+        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.ElementType).Returns(punchClocks.ElementType);
+        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.GetEnumerator()).Returns(punchClocks.GetEnumerator());
+
+        var userSetMock = new Mock<DbSet<Users>>();
+        userSetMock.As<IQueryable<Users>>().Setup(m => m.Provider).Returns(users.Provider);
+        userSetMock.As<IQueryable<Users>>().Setup(m => m.Expression).Returns(users.Expression);
+        userSetMock.As<IQueryable<Users>>().Setup(m => m.ElementType).Returns(users.ElementType);
+        userSetMock.As<IQueryable<Users>>().Setup(m => m.GetEnumerator()).Returns(users.GetEnumerator());
+
+        _contextMock.Setup(c => c.PunchClocks).Returns(punchClockSetMock.Object);
+        _contextMock.Setup(c => c.Users).Returns(userSetMock.Object);
+
+        // Act
+        var result = _controller.ListarPontos(null, dataInicio, dataFim);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = okResult.Value;
+        Assert.NotNull(response);
+    }
+
+
 }
 
