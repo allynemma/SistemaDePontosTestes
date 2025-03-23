@@ -1,8 +1,6 @@
-﻿using Castle.Components.DictionaryAdapter.Xml;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.Logging;
 using Moq;
 using SistemaDePontosAPI;
@@ -11,7 +9,6 @@ using SistemaDePontosAPI.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Security.Claims;
 using Xunit;
 
@@ -28,15 +25,46 @@ public class PunchClockControllerTests
         _controller = new PunchClockController(_loggerMock.Object, _contextMock.Object);
     }
 
-    [Fact]
-    public void ResgistroDePonto_ShouldReturnBadRequest_WhenUserIsNotAuthenticated()
+    private void SetUserClaims(string userId, string role = "user")
     {
-        // Arrange
+        var claims = new List<Claim>
+        {
+            new Claim("userId", userId),
+            new Claim(ClaimTypes.Role, role)
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        var httpContext = new DefaultHttpContext { User = claimsPrincipal };
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = httpContext
+        };
+    }
+
+    private void SetAnonymousUser()
+    {
         var httpContext = new DefaultHttpContext();
         _controller.ControllerContext = new ControllerContext
         {
             HttpContext = httpContext
         };
+    }
+
+    private Mock<DbSet<T>> CreateMockDbSet<T>(IQueryable<T> data) where T : class
+    {
+        var mockSet = new Mock<DbSet<T>>();
+        mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(data.Provider);
+        mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(data.Expression);
+        mockSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(data.ElementType);
+        mockSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(data.GetEnumerator());
+        return mockSet;
+    }
+
+    [Fact]
+    public void ResgistroDePonto_ShouldReturnBadRequest_WhenUserIsNotAuthenticated()
+    {
+        // Arrange
+        SetAnonymousUser();
 
         // Act
         var result = _controller.ResgistroDePonto(PunchClockType.CheckIn);
@@ -50,14 +78,7 @@ public class PunchClockControllerTests
     public void ResgistroDePonto_ShouldReturnBadRequest_WhenPunchClockTypeIsInvalid()
     {
         // Arrange
-        var claims = new List<Claim> { new Claim("userId", "1") };
-        var identity = new ClaimsIdentity(claims, "TestAuthType");
-        var claimsPrincipal = new ClaimsPrincipal(identity);
-        var httpContext = new DefaultHttpContext { User = claimsPrincipal };
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = httpContext
-        };
+        SetUserClaims("1");
 
         // Act
         var result = _controller.ResgistroDePonto((PunchClockType)999);
@@ -71,26 +92,11 @@ public class PunchClockControllerTests
     public void ResgistroDePonto_ShouldReturnCreatedAtAction_WhenPunchClockIsValid()
     {
         // Arrange
-        var claims = new List<Claim> { new Claim("userId", "1") };
-        var identity = new ClaimsIdentity(claims, "TestAuthType");
-        var claimsPrincipal = new ClaimsPrincipal(identity);
-        var httpContext = new DefaultHttpContext { User = claimsPrincipal };
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = httpContext
-        };
+        SetUserClaims("1");
 
-        // Lista de PunchClocks em memória (vazia para evitar conflitos)
         var punchClocks = new List<PunchClock>().AsQueryable();
+        var mockSet = CreateMockDbSet(punchClocks);
 
-        // Mock do DbSet<PunchClock>
-        var mockSet = new Mock<DbSet<PunchClock>>();
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.Provider).Returns(punchClocks.Provider);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.Expression).Returns(punchClocks.Expression);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.ElementType).Returns(punchClocks.ElementType);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.GetEnumerator()).Returns(punchClocks.GetEnumerator());
-
-        // Configurar o contexto mockado
         _contextMock.Setup(c => c.PunchClocks).Returns(mockSet.Object);
         _contextMock.Setup(c => c.PunchClocks.Add(It.IsAny<PunchClock>())).Verifiable();
         _contextMock.Setup(c => c.SaveChanges()).Returns(1);
@@ -107,11 +113,7 @@ public class PunchClockControllerTests
     public void Historico_ShouldReturnBadRequest_WhenUserIsNotAuthenticated()
     {
         // Arrange
-        var httpContext = new DefaultHttpContext();
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = httpContext
-        };
+        SetAnonymousUser();
 
         // Act
         var result = _controller.Historico(null, null, null);
@@ -120,31 +122,20 @@ public class PunchClockControllerTests
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal("Usuário não autenticado", badRequestResult.Value);
     }
+
     [Fact]
     public void Historico_ShouldReturnOk_WhenPunchClocksAreFound()
     {
         // Arrange
-        var claims = new List<Claim> { new Claim("userId", "1") };
-        var identity = new ClaimsIdentity(claims, "TestAuthType");
-        var claimsPrincipal = new ClaimsPrincipal(identity);
-        var httpContext = new DefaultHttpContext { User = claimsPrincipal };
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = httpContext
-        };
+        SetUserClaims("1");
 
         var punchClocks = new List<PunchClock>
-    {
-        new PunchClock { Id = 1, UserId = 1, Timestamp = DateTime.Now, PunchClockType = PunchClockType.CheckIn },
-        new PunchClock { Id = 2, UserId = 1, Timestamp = DateTime.Now.AddHours(8), PunchClockType = PunchClockType.CheckOut }
-    }.AsQueryable();
+        {
+            new PunchClock { Id = 1, UserId = 1, Timestamp = DateTime.Now, PunchClockType = PunchClockType.CheckIn },
+            new PunchClock { Id = 2, UserId = 1, Timestamp = DateTime.Now.AddHours(8), PunchClockType = PunchClockType.CheckOut }
+        }.AsQueryable();
 
-        var mockSet = new Mock<DbSet<PunchClock>>();
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.Provider).Returns(punchClocks.Provider);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.Expression).Returns(punchClocks.Expression);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.ElementType).Returns(punchClocks.ElementType);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.GetEnumerator()).Returns(punchClocks.GetEnumerator());
-
+        var mockSet = CreateMockDbSet(punchClocks);
         _contextMock.Setup(c => c.PunchClocks).Returns(mockSet.Object);
 
         // Act
@@ -155,20 +146,16 @@ public class PunchClockControllerTests
         var response = okResult.Value;
         Assert.NotNull(response);
     }
+
     [Fact]
     public void Historico_ShouldReturnBadRequest_WhenStartDateIsGreaterThanEndDate()
     {
         // Arrange
-        var claims = new List<Claim> { new Claim("userId", "1") };
-        var identity = new ClaimsIdentity(claims, "TestAuthType");
-        var claimsPrincipal = new ClaimsPrincipal(identity);
-        var httpContext = new DefaultHttpContext { User = claimsPrincipal };
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = httpContext
-        };
+        SetUserClaims("1");
+
         // Act
         var result = _controller.Historico(null, DateTime.Now.Date.AddDays(1), DateTime.Now.Date);
+
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal("Data de início não pode ser maior que a data final", badRequestResult.Value);
@@ -177,24 +164,16 @@ public class PunchClockControllerTests
     [Fact]
     public void Historico_ShouldReturnOk_WhenEndDateIsNull()
     {
-        var claims = new List<Claim> { new Claim("userId", "1") };
-        var identity = new ClaimsIdentity(claims, "TestAuthType");
-        var claimsPrincipal = new ClaimsPrincipal(identity);
-        var httpContext = new DefaultHttpContext { User = claimsPrincipal };
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = httpContext
-        };
+        // Arrange
+        SetUserClaims("1");
+
         var punchClocks = new List<PunchClock>
         {
             new PunchClock { Id = 1, UserId = 1, Timestamp = DateTime.Now, PunchClockType = PunchClockType.CheckIn },
             new PunchClock { Id = 2, UserId = 1, Timestamp = DateTime.Now.AddHours(8), PunchClockType = PunchClockType.CheckOut }
         }.AsQueryable();
-        var mockSet = new Mock<DbSet<PunchClock>>();
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.Provider).Returns(punchClocks.Provider);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.Expression).Returns(punchClocks.Expression);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.ElementType).Returns(punchClocks.ElementType);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.GetEnumerator()).Returns(punchClocks.GetEnumerator());
+
+        var mockSet = CreateMockDbSet(punchClocks);
         _contextMock.Setup(c => c.PunchClocks).Returns(mockSet.Object);
 
         // Act
@@ -209,27 +188,21 @@ public class PunchClockControllerTests
     [Fact]
     public void Historico_ShouldReturnOk_WhenStartDateIsNull()
     {
-        var claims = new List<Claim> { new Claim("userId", "1") };
-        var identity = new ClaimsIdentity(claims, "TestAuthType");
-        var claimsPrincipal = new ClaimsPrincipal(identity);
-        var httpContext = new DefaultHttpContext { User = claimsPrincipal };
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = httpContext
-        };
+        // Arrange
+        SetUserClaims("1");
+
         var punchClocks = new List<PunchClock>
         {
             new PunchClock { Id = 1, UserId = 1, Timestamp = DateTime.Now, PunchClockType = PunchClockType.CheckIn },
             new PunchClock { Id = 2, UserId = 1, Timestamp = DateTime.Now.AddHours(8), PunchClockType = PunchClockType.CheckOut }
         }.AsQueryable();
-        var mockSet = new Mock<DbSet<PunchClock>>();
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.Provider).Returns(punchClocks.Provider);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.Expression).Returns(punchClocks.Expression);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.ElementType).Returns(punchClocks.ElementType);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.GetEnumerator()).Returns(punchClocks.GetEnumerator());
+
+        var mockSet = CreateMockDbSet(punchClocks);
         _contextMock.Setup(c => c.PunchClocks).Returns(mockSet.Object);
+
         // Act
         var result = _controller.Historico(null, null, DateTime.Now.Date);
+
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = okResult.Value;
@@ -239,57 +212,45 @@ public class PunchClockControllerTests
     [Fact]
     public void Historico_ShouldReturnOk_WhenBothDatesAreNull()
     {
-        var claims = new List<Claim> { new Claim("userId", "1") };
-        var identity = new ClaimsIdentity(claims, "TestAuthType");
-        var claimsPrincipal = new ClaimsPrincipal(identity);
-        var httpContext = new DefaultHttpContext { User = claimsPrincipal };
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = httpContext
-        };
+        // Arrange
+        SetUserClaims("1");
+
         var punchClocks = new List<PunchClock>
         {
             new PunchClock { Id = 1, UserId = 1, Timestamp = DateTime.Now, PunchClockType = PunchClockType.CheckIn },
             new PunchClock { Id = 2, UserId = 1, Timestamp = DateTime.Now.AddHours(8), PunchClockType = PunchClockType.CheckOut }
         }.AsQueryable();
-        var mockSet = new Mock<DbSet<PunchClock>>();
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.Provider).Returns(punchClocks.Provider);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.Expression).Returns(punchClocks.Expression);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.ElementType).Returns(punchClocks.ElementType);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.GetEnumerator()).Returns(punchClocks.GetEnumerator());
+
+        var mockSet = CreateMockDbSet(punchClocks);
         _contextMock.Setup(c => c.PunchClocks).Returns(mockSet.Object);
+
         // Act
         var result = _controller.Historico(null, null, null);
+
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = okResult.Value;
         Assert.NotNull(response);
     }
+
     [Fact]
     public void Historico_ShouldReturnOk_WhenPunchClocksAreFilteredByDate()
     {
         // Arrange
-        var claims = new List<Claim> { new Claim("userId", "1") };
-        var identity = new ClaimsIdentity(claims, "TestAuthType");
-        var claimsPrincipal = new ClaimsPrincipal(identity);
-        var httpContext = new DefaultHttpContext { User = claimsPrincipal };
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = httpContext
-        };
+        SetUserClaims("1");
+
         var punchClocks = new List<PunchClock>
-    {
-        new PunchClock { Id = 1, UserId = 1, Timestamp = DateTime.Now, PunchClockType = PunchClockType.CheckIn },
-        new PunchClock { Id = 2, UserId = 1, Timestamp = DateTime.Now.AddHours(8), PunchClockType = PunchClockType.CheckOut }
-    }.AsQueryable();
-        var mockSet = new Mock<DbSet<PunchClock>>();
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.Provider).Returns(punchClocks.Provider);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.Expression).Returns(punchClocks.Expression);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.ElementType).Returns(punchClocks.ElementType);
-        mockSet.As<IQueryable<PunchClock>>().Setup(m => m.GetEnumerator()).Returns(punchClocks.GetEnumerator());
+        {
+            new PunchClock { Id = 1, UserId = 1, Timestamp = DateTime.Now, PunchClockType = PunchClockType.CheckIn },
+            new PunchClock { Id = 2, UserId = 1, Timestamp = DateTime.Now.AddHours(8), PunchClockType = PunchClockType.CheckOut }
+        }.AsQueryable();
+
+        var mockSet = CreateMockDbSet(punchClocks);
         _contextMock.Setup(c => c.PunchClocks).Returns(mockSet.Object);
+
         // Act
         var result = _controller.Historico(null, DateTime.Now.Date, DateTime.Now.Date.AddDays(1));
+
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = okResult.Value;
@@ -300,6 +261,7 @@ public class PunchClockControllerTests
     public void GerarRelatorio_ShouldReturnBadRequest_WhenDataInicioIsGreaterThanDataFim()
     {
         // Arrange
+        SetUserClaims("1", "admin");
         var dataInicio = DateTime.Now;
         var dataFim = DateTime.Now.AddDays(-1);
 
@@ -315,20 +277,16 @@ public class PunchClockControllerTests
     public void GerarRelatorio_ShouldReturnCsvFile_WhenDataIsValid()
     {
         // Arrange
+        SetUserClaims("1", "admin");
         var dataInicio = DateTime.Now.AddDays(-10);
         var dataFim = DateTime.Now;
         var punchClocks = new List<PunchClock>
-            {
-                new PunchClock { Id = 1, UserId = 1, Timestamp = DateTime.Now.AddDays(-5), PunchClockType = PunchClockType.CheckIn },
-                new PunchClock { Id = 2, UserId = 1, Timestamp = DateTime.Now.AddDays(-5).AddHours(8), PunchClockType = PunchClockType.CheckOut }
-            }.AsQueryable();
+        {
+            new PunchClock { Id = 1, UserId = 1, Timestamp = DateTime.Now.AddDays(-5), PunchClockType = PunchClockType.CheckIn },
+            new PunchClock { Id = 2, UserId = 1, Timestamp = DateTime.Now.AddDays(-5).AddHours(8), PunchClockType = PunchClockType.CheckOut }
+        }.AsQueryable();
 
-        var dbSetMock = new Mock<DbSet<PunchClock>>();
-        dbSetMock.As<IQueryable<PunchClock>>().Setup(m => m.Provider).Returns(punchClocks.Provider);
-        dbSetMock.As<IQueryable<PunchClock>>().Setup(m => m.Expression).Returns(punchClocks.Expression);
-        dbSetMock.As<IQueryable<PunchClock>>().Setup(m => m.ElementType).Returns(punchClocks.ElementType);
-        dbSetMock.As<IQueryable<PunchClock>>().Setup(m => m.GetEnumerator()).Returns(punchClocks.GetEnumerator());
-
+        var dbSetMock = CreateMockDbSet(punchClocks);
         _contextMock.Setup(c => c.PunchClocks).Returns(dbSetMock.Object);
 
         // Act
@@ -344,6 +302,7 @@ public class PunchClockControllerTests
     public void ListarPontos_ShouldReturnBadRequest_WhenDataInicioIsGreaterThanDataFim()
     {
         // Arrange
+        SetUserClaims("1", "admin");
         var dataInicio = DateTime.Now;
         var dataFim = DateTime.Now.AddDays(-1);
 
@@ -352,13 +311,14 @@ public class PunchClockControllerTests
 
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.Equal("Data de início não pode ser maior que a data final", badRequestResult.Value);
+        Assert.Equal("Data de início não pode ser maior do que data fim", badRequestResult.Value);
     }
 
     [Fact]
     public void ListarPontos_ShouldReturnOk_WhenNoDatesAreProvided()
     {
         // Arrange
+        SetUserClaims("1", "admin");
         var punchClocks = new List<PunchClock>
         {
             new PunchClock { Id = 1, UserId = 1, Timestamp = DateTime.Now, PunchClockType = PunchClockType.CheckIn },
@@ -370,17 +330,8 @@ public class PunchClockControllerTests
             new Users { Id = 1, Name = "John Doe", Email = "john@example.com", Password = "password", Role = "user" }
         }.AsQueryable();
 
-        var punchClockSetMock = new Mock<DbSet<PunchClock>>();
-        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.Provider).Returns(punchClocks.Provider);
-        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.Expression).Returns(punchClocks.Expression);
-        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.ElementType).Returns(punchClocks.ElementType);
-        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.GetEnumerator()).Returns(punchClocks.GetEnumerator());
-
-        var userSetMock = new Mock<DbSet<Users>>();
-        userSetMock.As<IQueryable<Users>>().Setup(m => m.Provider).Returns(users.Provider);
-        userSetMock.As<IQueryable<Users>>().Setup(m => m.Expression).Returns(users.Expression);
-        userSetMock.As<IQueryable<Users>>().Setup(m => m.ElementType).Returns(users.ElementType);
-        userSetMock.As<IQueryable<Users>>().Setup(m => m.GetEnumerator()).Returns(users.GetEnumerator());
+        var punchClockSetMock = CreateMockDbSet(punchClocks);
+        var userSetMock = CreateMockDbSet(users);
 
         _contextMock.Setup(c => c.PunchClocks).Returns(punchClockSetMock.Object);
         _contextMock.Setup(c => c.Users).Returns(userSetMock.Object);
@@ -394,10 +345,11 @@ public class PunchClockControllerTests
         Assert.NotNull(response);
     }
 
-        [Fact]
+    [Fact]
     public void ListarPontos_ShouldReturnOk_WhenDatesAreProvided()
     {
         // Arrange
+        SetUserClaims("1", "admin");
         var dataInicio = DateTime.Now.AddDays(-10);
         var dataFim = DateTime.Now;
 
@@ -412,17 +364,8 @@ public class PunchClockControllerTests
             new Users { Id = 1, Name = "John Doe", Email = "john@example.com", Password = "password", Role = "user" }
         }.AsQueryable();
 
-        var punchClockSetMock = new Mock<DbSet<PunchClock>>();
-        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.Provider).Returns(punchClocks.Provider);
-        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.Expression).Returns(punchClocks.Expression);
-        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.ElementType).Returns(punchClocks.ElementType);
-        punchClockSetMock.As<IQueryable<PunchClock>>().Setup(m => m.GetEnumerator()).Returns(punchClocks.GetEnumerator());
-
-        var userSetMock = new Mock<DbSet<Users>>();
-        userSetMock.As<IQueryable<Users>>().Setup(m => m.Provider).Returns(users.Provider);
-        userSetMock.As<IQueryable<Users>>().Setup(m => m.Expression).Returns(users.Expression);
-        userSetMock.As<IQueryable<Users>>().Setup(m => m.ElementType).Returns(users.ElementType);
-        userSetMock.As<IQueryable<Users>>().Setup(m => m.GetEnumerator()).Returns(users.GetEnumerator());
+        var punchClockSetMock = CreateMockDbSet(punchClocks);
+        var userSetMock = CreateMockDbSet(users);
 
         _contextMock.Setup(c => c.PunchClocks).Returns(punchClockSetMock.Object);
         _contextMock.Setup(c => c.Users).Returns(userSetMock.Object);
@@ -435,7 +378,5 @@ public class PunchClockControllerTests
         var response = okResult.Value;
         Assert.NotNull(response);
     }
-
-
 }
 
