@@ -1,33 +1,26 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using SistemaDePontosAPI.Controllers;
 using SistemaDePontosAPI.Model;
-using System;
+using SistemaDePontosAPI.Services;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
-using SistemaDePontosAPI;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
-using System.Linq.Expressions;
 
 public class UsersControllerTests
 {
     private readonly Mock<ILogger<UsersController>> _loggerMock;
-    private readonly Mock<Context> _contextMock;
-    private readonly Mock<IConfiguration> _configurationMock;
+    private readonly Mock<IUserService> _userServiceMock;
     private readonly UsersController _controller;
 
     public UsersControllerTests()
     {
         _loggerMock = new Mock<ILogger<UsersController>>();
-        _contextMock = new Mock<Context>(new DbContextOptions<Context>());
-        _configurationMock = new Mock<IConfiguration>();
-        _controller = new UsersController(_loggerMock.Object, _contextMock.Object, _configurationMock.Object);
+        _userServiceMock = new Mock<IUserService>();
+        _controller = new UsersController(_loggerMock.Object, _userServiceMock.Object);
     }
 
     [Fact]
@@ -35,8 +28,7 @@ public class UsersControllerTests
     {
         // Arrange
         var user = new Users { Id = 1, Name = "Test User", Email = "test@example.com", Password = "password", Role = "User" };
-        _contextMock.Setup(c => c.Users.AddAsync(It.IsAny<Users>(), default)).Returns(new ValueTask<EntityEntry<Users>>(Task.FromResult((EntityEntry<Users>)null!)));
-        _contextMock.Setup(c => c.SaveChangesAsync(default)).ReturnsAsync(1);
+        _userServiceMock.Setup(s => s.Register(It.IsAny<Users>())).ReturnsAsync(user);
 
         // Act
         var result = await _controller.Register(user);
@@ -45,29 +37,18 @@ public class UsersControllerTests
         var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result);
         Assert.Equal("Get", createdAtActionResult.ActionName);
     }
+
     [Fact]
     public void Login_ShouldReturnOk_WhenCredentialsAreValid()
     {
         // Arrange
         var email = "test@example.com";
         var password = "password";
-        var nome = "Test User";
-        var role = "admin";
-        var user = new Users { Id = 1, Email = email, Password = password, Name = nome, Role = role };
+        var user = new Users { Id = 1, Email = email, Password = password, Name = "Test User", Role = "admin" };
+        var token = "testToken";
 
-        var users = new List<Users> { user }.AsQueryable();
-
-        var mockSet = new Mock<DbSet<Users>>();
-        mockSet.As<IQueryable<Users>>().Setup(m => m.Provider).Returns(new TestAsyncQueryProvider<Users>(users.Provider));
-        mockSet.As<IQueryable<Users>>().Setup(m => m.Expression).Returns(users.Expression);
-        mockSet.As<IQueryable<Users>>().Setup(m => m.ElementType).Returns(users.ElementType);
-        mockSet.As<IQueryable<Users>>().Setup(m => m.GetEnumerator()).Returns(users.GetEnumerator());
-        mockSet.As<IAsyncEnumerable<Users>>().Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>())).Returns(new TestAsyncEnumerator<Users>(users.GetEnumerator()));
-
-        _contextMock.Setup(c => c.Users).Returns(mockSet.Object);
-
-        _configurationMock.Setup(c => c["Jwt:Issuer"]).Returns("testIssuer");
-        _configurationMock.Setup(c => c["Jwt:Audience"]).Returns("testAudience");
+        _userServiceMock.Setup(s => s.Authenticate(email, password)).Returns(user);
+        _userServiceMock.Setup(s => s.GenerateJwtToken(email, user.Id)).Returns(token);
 
         var context = new DefaultHttpContext();
         _controller.ControllerContext = new ControllerContext
@@ -82,17 +63,16 @@ public class UsersControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = okResult.Value;
         Assert.NotNull(response);
-        Assert.NotNull(response.GetType().GetProperty("token")?.GetValue(response, null));
-        Assert.NotNull(response.GetType().GetProperty("Id")?.GetValue(response, null));
+        Assert.Equal(token, response.GetType().GetProperty("token")?.GetValue(response, null));
+        Assert.Equal(user.Id, response.GetType().GetProperty("Id")?.GetValue(response, null));
     }
-
 
     [Fact]
     public async Task Get_ShouldReturnOk_WhenUserIsFound()
     {
         // Arrange
         var user = new Users { Id = 1, Name = "Test User", Email = "test@example.com", Password = "password", Role = "User" };
-        _contextMock.Setup(c => c.Users.FindAsync(1)).ReturnsAsync(user);
+        _userServiceMock.Setup(s => s.GetUserById(1)).ReturnsAsync(user);
 
         // Act
         var result = await _controller.Get(1);
@@ -109,8 +89,7 @@ public class UsersControllerTests
         // Arrange
         var user = new Users { Id = 1, Name = "Test User", Email = "test@example.com", Password = "password", Role = "User" };
         var updatedUser = new Users { Name = "Updated User", Email = "updated@example.com", Password = "newpassword", Role = "Admin" };
-        _contextMock.Setup(c => c.Users.FindAsync(1)).ReturnsAsync(user);
-        _contextMock.Setup(c => c.SaveChangesAsync(default)).ReturnsAsync(1);
+        _userServiceMock.Setup(s => s.UpdateUser(1, updatedUser)).ReturnsAsync(updatedUser);
 
         // Act
         var result = await _controller.Put(1, updatedUser);
@@ -125,9 +104,7 @@ public class UsersControllerTests
     public async Task Delete_ShouldReturnNoContent_WhenUserIsDeleted()
     {
         // Arrange
-        var user = new Users { Id = 1, Name = "Test User", Email = "test@example.com", Password = "password", Role = "User" };
-        _contextMock.Setup(c => c.Users.FindAsync(1)).ReturnsAsync(user);
-        _contextMock.Setup(c => c.SaveChangesAsync(default)).ReturnsAsync(1);
+        _userServiceMock.Setup(s => s.DeleteUser(1)).ReturnsAsync(true);
 
         // Act
         var result = await _controller.Delete(1);
