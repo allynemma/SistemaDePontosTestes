@@ -9,18 +9,21 @@ using SistemaDePontosAPI.Services;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
+using SistemaDePontosAPI.Mensageria;
 
 public class UsersControllerTests
 {
     private readonly Mock<ILogger<UsersController>> _loggerMock;
     private readonly Mock<IUserService> _userServiceMock;
     private readonly UsersController _controller;
+    private readonly KafkaProducer _kafkaProducer;
 
     public UsersControllerTests()
     {
         _loggerMock = new Mock<ILogger<UsersController>>();
         _userServiceMock = new Mock<IUserService>();
-        _controller = new UsersController(_loggerMock.Object, _userServiceMock.Object);
+        _kafkaProducer = new KafkaProducer("localhost:9092", "pontos");
+        _controller = new UsersController(_loggerMock.Object, _userServiceMock.Object, _kafkaProducer);
     }
 
     [Fact]
@@ -39,7 +42,7 @@ public class UsersControllerTests
     }
 
     [Fact]
-    public void Login_ShouldReturnOk_WhenCredentialsAreValid()
+    public async Task Login_ShouldReturnOk_WhenCredentialsAreValid()
     {
         // Arrange
         var email = "test@example.com";
@@ -57,7 +60,7 @@ public class UsersControllerTests
         };
 
         // Act
-        var result = _controller.Login(email, password);
+        var result = await _controller.Login(email, password);
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);

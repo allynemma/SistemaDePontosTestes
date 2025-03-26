@@ -8,6 +8,7 @@ using SistemaDePontosAPI.Services;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using SistemaDePontosAPI.Mensageria;
 using Xunit;
 
 public class SettingsControllerTests
@@ -15,12 +16,15 @@ public class SettingsControllerTests
     private readonly Mock<ILogger<SettingsController>> _loggerMock;
     private readonly Mock<ISettingsService> _settingsServiceMock;
     private readonly SettingsController _controller;
+    private readonly KafkaProducer _kafkaProducer;
+
 
     public SettingsControllerTests()
     {
         _loggerMock = new Mock<ILogger<SettingsController>>();
         _settingsServiceMock = new Mock<ISettingsService>();
-        _controller = new SettingsController(_loggerMock.Object, _settingsServiceMock.Object);
+        _kafkaProducer = new KafkaProducer("localhost:9092", "pontos");
+        _controller = new SettingsController(_loggerMock.Object, _settingsServiceMock.Object, _kafkaProducer);
     }
 
     private void SetUserClaims(string userId, string role = "User")

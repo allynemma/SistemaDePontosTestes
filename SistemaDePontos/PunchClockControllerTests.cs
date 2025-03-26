@@ -5,24 +5,21 @@ using Moq;
 using SistemaDePontosAPI.Controllers;
 using SistemaDePontosAPI.Model;
 using SistemaDePontosAPI.Services;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Claims;
-using System.Threading.Tasks;
-using Xunit;
-
+using SistemaDePontosAPI.Mensageria;
 public class PunchClockControllerTests
 {
     private readonly Mock<ILogger<PunchClockController>> _loggerMock;
     private readonly Mock<IPunchClockService> _punchClockServiceMock;
+    private readonly Mock<KafkaProducer> _kafkaProducerMock;
     private readonly PunchClockController _controller;
 
     public PunchClockControllerTests()
     {
         _loggerMock = new Mock<ILogger<PunchClockController>>();
         _punchClockServiceMock = new Mock<IPunchClockService>();
-        _controller = new PunchClockController(_loggerMock.Object, _punchClockServiceMock.Object);
+        _kafkaProducerMock = new Mock<KafkaProducer>("localhost:9092", "pontos");
+        _controller = new PunchClockController(_loggerMock.Object, _punchClockServiceMock.Object, _kafkaProducerMock.Object);
     }
 
     private void SetUserClaims(string userId, string role = "user")
